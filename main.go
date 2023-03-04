@@ -27,7 +27,7 @@ func configure() (*workload, error) {
 	argc := len(os.Args)
 
 	if argc < 2 {
-		return nil, fmt.Errorf("usage: %s image [command]", os.Args[0])
+		return nil, fmt.Errorf("usage: %v image [command]", os.Args[0])
 	}
 
 	workload := workload{
