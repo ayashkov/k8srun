@@ -19,11 +19,7 @@ Kubernetes workload from AutoSys jobs.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			namespace := cmd.Flags().Lookup("namespace").Value.String()
 			job := cmd.Flags().Lookup("job").Value.String()
-			command := ""
-
-			if len(args) > 1 {
-				command = args[1]
-			}
+			command := args[1:]
 
 			fmt.Println("Namespace", namespace)
 			fmt.Println("Job", job)
