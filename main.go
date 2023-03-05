@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type workload struct {
-	image   string
-	command string
+	namespace string
+	image     string
+	command   string
 }
 
 func main() {
@@ -19,6 +21,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println(workload.namespace)
 	fmt.Println(workload.image)
 	fmt.Println(workload.command)
 }
@@ -31,8 +34,9 @@ func configure() (*workload, error) {
 	}
 
 	workload := workload{
-		image:   os.Args[1],
-		command: "",
+		namespace: normalize(os.Getenv("AUTO_JOB_NAME")),
+		image:     os.Args[1],
+		command:   "",
 	}
 
 	if argc > 2 {
@@ -40,4 +44,8 @@ func configure() (*workload, error) {
 	}
 
 	return &workload, nil
+}
+
+func normalize(s string) string {
+	return strings.ReplaceAll(strings.TrimSpace(strings.ToLower(s)), "_", "-")
 }
