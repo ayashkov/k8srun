@@ -75,7 +75,6 @@ func (cluster *cluster) run(workload *workload) {
 	pod := &core.Pod{
 		ObjectMeta: meta.ObjectMeta{
 			GenerateName: normalize(workload.Job) + "-",
-			Namespace:    namespace,
 			Labels: map[string]string{
 				"job": workload.Job,
 			},
