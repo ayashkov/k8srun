@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	core "k8s.io/api/core/v1"
@@ -12,9 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
 func main() {
@@ -24,110 +21,71 @@ func main() {
 	}
 }
 
-func runCommand() *cobra.Command {
-	var kubeconfig string
-	var namespace string
-	var job string
-	var cmd = &cobra.Command{
-		Use:   "go-study [flags] image [-- command [args...]]",
-		Short: "AutoSys to Kubernetes bridge",
-		Long: `This is an attempt to implement a bridge between AutoSys
-scheduler and a Kubernetes cluster. The goal is to be able
-to execute Kubernetes workload from AutoSys jobs.`,
-		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			image := args[0]
-			command := args[1:]
-
-			fmt.Println("Kubeconfig", kubeconfig)
-			fmt.Println("Namespace", namespace)
-			fmt.Println("Job", job)
-			fmt.Println("Image", image)
-			fmt.Println("Command", command)
-
-			clientset := createClientset(kubeconfig)
-
-			createPod(clientset, namespace, job, image, command)
-		},
-	}
-
-	cmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig",
-		filepath.Join(home(), ".kube", "config"),
-		"Kubernetes client configuration file")
-	cmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "",
-		"The namespace for creating the pod")
-	cmd.Flags().StringVarP(&job, "job", "j", os.Getenv("AUTO_JOB_NAME"),
-		"The job name to use for naming the pod")
-
-	return cmd
+type workload struct {
+	Namespace string
+	Job       string
+	Image     string
+	Command   []string
 }
 
-func home() string {
-	if home := homedir.HomeDir(); home != "" {
-		return home
-	}
-
-	return "/"
+type cluster struct {
+	clentset  *kubernetes.Clientset
+	namespace string
 }
 
-func normalize(s string) string {
-	return strings.ReplaceAll(strings.TrimSpace(strings.ToLower(s)),
-		"_", "-")
-}
+func config(kubeconfig string) *cluster {
+	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 
-func createClientset(kubeconfig string) *kubernetes.Clientset {
-	clientset, err := kubernetes.NewForConfig(configure(kubeconfig))
+	rules.ExplicitPath = kubeconfig
+
+	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		rules, &clientcmd.ConfigOverrides{})
+	namespace, _, err := clientConfig.Namespace()
 
 	if err != nil {
 		panic(err.Error())
 	}
 
-	return clientset
-}
-
-func configure(kubeconfig string) *rest.Config {
-	// rules := clientcmd.NewDefaultClientConfigLoadingRules()
-
-	// rules.ExplicitPath = ""
-
-	// overrides := &clientcmd.ConfigOverrides{}
-	// k8s := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(rules,
-	// 	overrides)
-
-	// fmt.Println(k8s.ClientConfig())
-
-	// os.Exit(1)
-
-	config, err := rest.InClusterConfig()
-
-	if err == rest.ErrNotInCluster {
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-	}
+	config, err := clientConfig.ClientConfig()
 
 	if err != nil {
 		panic(err.Error())
 	}
 
-	return config
+	clientset, err := kubernetes.NewForConfig(config)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	return &cluster{
+		clentset:  clientset,
+		namespace: namespace,
+	}
 }
 
-func createPod(clientset *kubernetes.Clientset, namespace string,
-	name string, image string, command []string) {
-	podClient := clientset.CoreV1().Pods(meta.NamespaceDefault)
+func (cluster *cluster) run(workload *workload) {
+	namespace := workload.Namespace
+
+	if namespace == "" {
+		namespace = cluster.namespace
+	}
+
+	podClient := cluster.clentset.CoreV1().Pods(namespace)
 	pod := &core.Pod{
 		ObjectMeta: meta.ObjectMeta{
-			GenerateName: normalize(name) + "-",
+			GenerateName: normalize(workload.Job) + "-",
 			Namespace:    namespace,
 			Labels: map[string]string{
-				"job": name,
+				"job": workload.Job,
 			},
 		},
 		Spec: core.PodSpec{
 			Containers: []core.Container{
 				{
 					Name:            "job",
-					Image:           image,
-					Command:         command,
+					Image:           workload.Image,
+					Command:         workload.Command,
 					ImagePullPolicy: core.PullAlways,
 				},
 			},
@@ -143,4 +101,47 @@ func createPod(clientset *kubernetes.Clientset, namespace string,
 
 	fmt.Printf("Created pod %v/%v.\n", result.GetObjectMeta().GetNamespace(),
 		result.GetObjectMeta().GetName())
+}
+
+func runCommand() *cobra.Command {
+	var kubeconfig string
+
+	workload := workload{}
+	cmd := &cobra.Command{
+		Use:   "go-study [flags] image [-- command [args...]]",
+		Short: "AutoSys to Kubernetes bridge",
+		Long: `This is an attempt to implement a bridge between AutoSys
+scheduler and a Kubernetes cluster. The goal is to be able
+to execute Kubernetes workload from AutoSys jobs.`,
+		Args: cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			workload.Image = args[0]
+			workload.Command = args[1:]
+
+			fmt.Println("Kubeconfig:", kubeconfig)
+			fmt.Println("Namespace:", workload.Namespace)
+			fmt.Println("Job:", workload.Job)
+			fmt.Println("Image:", workload.Image)
+			fmt.Println("Command:", workload.Command)
+
+			cluster := config(kubeconfig)
+
+			cluster.run(&workload)
+		},
+	}
+
+	cmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig",
+		"", "Kubernetes client configuration file")
+	cmd.PersistentFlags().StringVarP(&(workload.Namespace), "namespace",
+		"n", "", "The namespace for creating the pod")
+	cmd.Flags().StringVarP(&(workload.Job), "job", "j",
+		os.Getenv("AUTO_JOB_NAME"),
+		"The job name to use for naming the pod")
+
+	return cmd
+}
+
+func normalize(s string) string {
+	return strings.ReplaceAll(strings.TrimSpace(strings.ToLower(s)),
+		"_", "-")
 }
