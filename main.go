@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"time"
 
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes"
@@ -71,8 +74,8 @@ func (cluster *cluster) run(workload *workload) {
 		namespace = cluster.namespace
 	}
 
-	podClient := cluster.clentset.CoreV1().Pods(namespace)
-	pod := &core.Pod{
+	pods := cluster.clentset.CoreV1().Pods(namespace)
+	podDef := &core.Pod{
 		ObjectMeta: meta.ObjectMeta{
 			GenerateName: normalize(workload.Job) + "-",
 			Labels: map[string]string{
@@ -92,14 +95,50 @@ func (cluster *cluster) run(workload *workload) {
 		},
 	}
 
-	result, err := podClient.Create(context.TODO(), pod, meta.CreateOptions{})
+	created, err := pods.Create(context.TODO(), podDef, meta.CreateOptions{})
 
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("Created pod %v/%v.\n", result.GetObjectMeta().GetNamespace(),
-		result.GetObjectMeta().GetName())
+	fmt.Printf("Created pod %v/%v.\n", created.GetObjectMeta().GetNamespace(),
+		created.GetObjectMeta().GetName())
+
+	err = wait.PollImmediate(2*time.Second, time.Minute, func() (done bool, err error) {
+		pod, err := pods.Get(context.TODO(), created.Name, meta.GetOptions{})
+
+		if err != nil {
+			return false, err
+		}
+
+		phase := pod.Status.Phase
+
+		if phase == core.PodRunning || phase == core.PodSucceeded ||
+			phase == core.PodFailed {
+			return true, nil
+		}
+
+		return false, nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	log, err := pods.GetLogs(created.Name, &core.PodLogOptions{Follow: true}).
+		Stream(context.TODO())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer log.Close()
+
+	_, err = io.Copy(os.Stdout, log)
+
+	if err != nil {
+		panic(err.Error())
+	}
 }
 
 func runCommand() *cobra.Command {
