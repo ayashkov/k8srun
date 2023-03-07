@@ -107,6 +107,9 @@ func (execution *Execution) Delete() error {
 			execution.pod.Namespace)
 
 		execution.pod = nil
+	} else {
+		fmt.Printf("Failure deleting pod %q in %q namespace: %v\n",
+			execution.pod.Name, execution.pod.Namespace, err.Error())
 	}
 
 	return err
