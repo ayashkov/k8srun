@@ -67,7 +67,7 @@ func config(kubeconfig string) *cluster {
 	}
 }
 
-func (cluster *cluster) run(workload *workload) {
+func (cluster *cluster) run(workload *workload) int {
 	namespace := workload.Namespace
 
 	if namespace == "" {
@@ -125,8 +125,9 @@ func (cluster *cluster) run(workload *workload) {
 		panic(err)
 	}
 
-	log, err := pods.GetLogs(created.Name, &core.PodLogOptions{Follow: true}).
-		Stream(context.TODO())
+	log, err := pods.GetLogs(created.Name, &core.PodLogOptions{
+		Follow: true,
+	}).Stream(context.TODO())
 
 	if err != nil {
 		panic(err)
@@ -139,6 +140,38 @@ func (cluster *cluster) run(workload *workload) {
 	if err != nil {
 		panic(err.Error())
 	}
+
+	var exitCode int
+
+	err = wait.PollImmediate(2*time.Second, time.Minute, func() (done bool, err error) {
+		pod, err := pods.Get(context.TODO(), created.Name, meta.GetOptions{})
+
+		if err != nil {
+			return false, err
+		}
+
+		containerStatuses := pod.Status.ContainerStatuses
+
+		if len(containerStatuses) == 0 {
+			return false, nil
+		}
+
+		terminated := containerStatuses[0].State.Terminated
+
+		if terminated != nil {
+			exitCode = int(terminated.ExitCode)
+
+			return true, nil
+		}
+
+		return false, nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return exitCode
 }
 
 func runCommand() *cobra.Command {
@@ -164,7 +197,7 @@ to execute Kubernetes workload from AutoSys jobs.`,
 
 			cluster := config(kubeconfig)
 
-			cluster.run(&workload)
+			os.Exit(cluster.run(&workload))
 		},
 	}
 
