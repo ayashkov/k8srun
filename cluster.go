@@ -93,6 +93,9 @@ func (cluster *Cluster) Start(job *Job) (*Execution, error) {
 		return nil, err
 	}
 
+	fmt.Printf("Created pod %q in %q namespace\n", execution.pod.Name,
+		execution.pod.Namespace)
+
 	return &execution, nil
 }
 
@@ -103,8 +106,7 @@ func (cluster *Cluster) Run(job *Job, out io.Writer) (int, error) {
 		return 128, err
 	}
 
-	fmt.Printf("Created pod %v in %v namespace\n", execution.pod.Name,
-		execution.pod.Namespace)
+	defer execution.Delete()
 
 	err = execution.CopyLogs(out)
 

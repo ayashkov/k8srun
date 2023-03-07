@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
 
@@ -91,4 +92,22 @@ func (execution *Execution) WaitForCompletion() (int, error) {
 	}
 
 	return exitCode, nil
+}
+
+func (execution *Execution) Delete() error {
+	if execution.pod == nil {
+		return nil
+	}
+
+	err := execution.pods.Delete(context.TODO(), execution.pod.Name,
+		meta.DeleteOptions{})
+
+	if err == nil {
+		fmt.Printf("Deleted pod %q in %q namespace\n", execution.pod.Name,
+			execution.pod.Namespace)
+
+		execution.pod = nil
+	}
+
+	return err
 }
