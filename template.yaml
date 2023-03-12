@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  namespace: dev
+  name: test-default-ace
+  labels:
+    k8srun.yashkov.org/prefix: test
+    k8srun.yashkov.org/config: default
+    k8srun.yashkov.org/instance: ace
+template:
+  metadata:
+    labels:
+      app.kubernetes.io/name: test-app
+      app.kubernetes.io/component: job
+      app.kubernetes.io/managed-by: k8srun
+  spec:
+    volumes:
+      - name: config
+        secret:
+          secretName: test-default-config
+      - name: temp
+        emptyDir:
+          sizeLimit: 100Mi
+    containers:
+      - name: job
+        image: alpine:latest
+        command:
+          - /bin/sh
+          - -c
+        env:
+          - name: JOB_TEMP
+            value: /var/run/k8srun
+        volumeMounts:
+          - mountPath: /etc/k8srun
+            name: config
+            readOnly: true
+          - mountPath: /var/run/k8srun
+            name: temp
+        resources:
+          limits:
+            cpu: 500m
+            memory: 800Mi
+          requests:
+            cpu: 50m
+            memory: 800Mi
