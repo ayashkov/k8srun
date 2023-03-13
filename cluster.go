@@ -9,17 +9,19 @@ import (
 
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+const INSTANCE = "k8srun.yashkov.org/instance"
+
+const PREFIX = "k8srun.yashkov.org/prefix"
 
 type Job struct {
 	Instance  string
 	Name      string
 	Namespace string
-	Config    string
+	Template  string
 	Args      []string
 }
 
@@ -77,7 +79,7 @@ func (cluster *Cluster) Start(job *Job) (*Execution, error) {
 
 	def.ObjectMeta.Namespace = ""
 	def.ObjectMeta.Name = ""
-	def.ObjectMeta.GenerateName = normalize(job.Name) + "-"
+	def.ObjectMeta.GenerateName = generateName(job.Name)
 	def.Spec.Containers[0].Args = job.Args
 
 	execution.pod, err = execution.pods.Create(context.TODO(), def,
@@ -118,43 +120,40 @@ func (cluster *Cluster) getPodTemplate(job *Job) (*core.PodTemplate, error) {
 		namespace = cluster.namespace
 	}
 
-	prefix, _ := labels.NewRequirement("k8srun.yashkov.org/prefix",
-		selection.Equals, []string{prefix(job.Name)})
-	config, _ := labels.NewRequirement("k8srun.yashkov.org/config",
-		selection.Equals, []string{job.Config})
-	instance, _ := labels.NewRequirement("k8srun.yashkov.org/instance",
-		selection.Equals, []string{strings.ToLower(job.Instance)})
-	selector := labels.NewSelector()
-
-	selector.Add(*prefix, *config, *instance)
-
-	list, err := cluster.clentset.CoreV1().PodTemplates(namespace).List(context.TODO(),
-		meta.ListOptions{LabelSelector: selector.String()})
+	template, err := cluster.clentset.CoreV1().PodTemplates(namespace).Get(
+		context.TODO(), job.Template, meta.GetOptions{})
 
 	if err != nil {
 		return nil, err
 	}
 
-	len := len(list.Items)
-
-	if len == 0 {
-		return nil, fmt.Errorf("unable to find the pod template")
+	if err = checkLabel(template, INSTANCE, strings.ToLower(job.Instance)); err != nil {
+		return nil, err
 	}
 
-	if len > 1 {
-		return nil, fmt.Errorf("more than one pod template is defined")
+	if err = checkLabel(template, PREFIX, prefix(job.Name)); err != nil {
+		return nil, err
 	}
 
-	return &list.Items[0], nil
+	return template, nil
+}
+
+func checkLabel(template *core.PodTemplate, name string, value string) error {
+	if strings.ToLower(template.Labels[name]) != value {
+		return fmt.Errorf("template label %v does not match %q", name,
+			value)
+	}
+
+	return nil
 }
 
 func prefix(name string) string {
 	re := regexp.MustCompile("^[[:alnum:]]+")
 
-	return strings.ToLower(re.FindString(name))
+	return strings.ToLower(re.FindString(strings.TrimSpace(name)))
 }
 
-func normalize(s string) string {
-	return strings.ReplaceAll(strings.TrimSpace(strings.ToLower(s)),
-		"_", "-")
+func generateName(s string) string {
+	return strings.ReplaceAll(strings.TrimSpace(strings.ToLower(s)), "_",
+		"-") + "-"
 }
