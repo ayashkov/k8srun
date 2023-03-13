@@ -127,21 +127,21 @@ func (cluster *Cluster) getPodTemplate(job *Job) (*core.PodTemplate, error) {
 		return nil, err
 	}
 
-	if err = checkLabel(template, INSTANCE, strings.ToLower(job.Instance)); err != nil {
+	if err = checkAnnotation(template, INSTANCE, strings.ToLower(job.Instance)); err != nil {
 		return nil, err
 	}
 
-	if err = checkLabel(template, PREFIX, prefix(job.Name)); err != nil {
+	if err = checkAnnotation(template, PREFIX, prefix(job.Name)); err != nil {
 		return nil, err
 	}
 
 	return template, nil
 }
 
-func checkLabel(template *core.PodTemplate, name string, value string) error {
-	if strings.ToLower(template.Labels[name]) != value {
-		return fmt.Errorf("template label %v does not match %q", name,
-			value)
+func checkAnnotation(template *core.PodTemplate, name string, value string) error {
+	if strings.ToLower(template.Annotations[name]) != value {
+		return fmt.Errorf("template annotation %v does not match %q",
+			name, value)
 	}
 
 	return nil
