@@ -15,9 +15,6 @@ template:
       app.kubernetes.io/managed-by: k8srun
   spec:
     volumes:
-      - name: config
-        secret:
-          secretName: test-default-config
       - name: temp
         emptyDir:
           sizeLimit: 100Mi
@@ -31,9 +28,6 @@ template:
           - name: JOB_TEMP
             value: /var/run/k8srun
         volumeMounts:
-          - mountPath: /etc/k8srun
-            name: config
-            readOnly: true
           - mountPath: /var/run/k8srun
             name: temp
         resources:

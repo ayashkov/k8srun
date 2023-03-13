@@ -4,19 +4,23 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Job struct {
-	Namespace string
+	Instance  string
 	Name      string
-	Image     string
-	Command   []string
+	Namespace string
+	Config    string
+	Args      []string
 }
 
 type Cluster struct {
@@ -56,37 +60,27 @@ func NewCluster(kubeconfig string) *Cluster {
 }
 
 func (cluster *Cluster) Start(job *Job) (*Execution, error) {
+	template, err := cluster.getPodTemplate(job)
+
+	if err != nil {
+		return nil, err
+	}
+
 	execution := Execution{job: job}
-	namespace := job.Namespace
 
-	if namespace == "" {
-		namespace = cluster.namespace
+	execution.pods = cluster.clentset.CoreV1().Pods(template.Namespace)
+
+	def := &core.Pod{
+		ObjectMeta: template.Template.ObjectMeta,
+		Spec:       template.Template.Spec,
 	}
 
-	execution.pods = cluster.clentset.CoreV1().Pods(namespace)
-	podDef := &core.Pod{
-		ObjectMeta: meta.ObjectMeta{
-			GenerateName: normalize(job.Name) + "-",
-			Labels: map[string]string{
-				"job": job.Name,
-			},
-		},
-		Spec: core.PodSpec{
-			Containers: []core.Container{
-				{
-					Name:            "job",
-					Image:           job.Image,
-					Command:         job.Command,
-					ImagePullPolicy: core.PullAlways,
-				},
-			},
-			RestartPolicy: core.RestartPolicyNever,
-		},
-	}
+	def.ObjectMeta.Namespace = ""
+	def.ObjectMeta.Name = ""
+	def.ObjectMeta.GenerateName = normalize(job.Name) + "-"
+	def.Spec.Containers[0].Args = job.Args
 
-	var err error
-
-	execution.pod, err = execution.pods.Create(context.TODO(), podDef,
+	execution.pod, err = execution.pods.Create(context.TODO(), def,
 		meta.CreateOptions{})
 
 	if err != nil {
@@ -115,6 +109,49 @@ func (cluster *Cluster) Run(job *Job, out io.Writer) (int, error) {
 	}
 
 	return execution.WaitForCompletion()
+}
+
+func (cluster *Cluster) getPodTemplate(job *Job) (*core.PodTemplate, error) {
+	namespace := job.Namespace
+
+	if namespace == "" {
+		namespace = cluster.namespace
+	}
+
+	prefix, _ := labels.NewRequirement("k8srun.yashkov.org/prefix",
+		selection.Equals, []string{prefix(job.Name)})
+	config, _ := labels.NewRequirement("k8srun.yashkov.org/config",
+		selection.Equals, []string{job.Config})
+	instance, _ := labels.NewRequirement("k8srun.yashkov.org/instance",
+		selection.Equals, []string{strings.ToLower(job.Instance)})
+	selector := labels.NewSelector()
+
+	selector.Add(*prefix, *config, *instance)
+
+	list, err := cluster.clentset.CoreV1().PodTemplates(namespace).List(context.TODO(),
+		meta.ListOptions{LabelSelector: selector.String()})
+
+	if err != nil {
+		return nil, err
+	}
+
+	len := len(list.Items)
+
+	if len == 0 {
+		return nil, fmt.Errorf("unable to find the pod template")
+	}
+
+	if len > 1 {
+		return nil, fmt.Errorf("more than one pod template is defined")
+	}
+
+	return &list.Items[0], nil
+}
+
+func prefix(name string) string {
+	re := regexp.MustCompile("^[[:alnum:]]+")
+
+	return strings.ToLower(re.FindString(name))
 }
 
 func normalize(s string) string {
