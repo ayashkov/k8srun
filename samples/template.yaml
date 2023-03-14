@@ -12,6 +12,7 @@ template:
       app.kubernetes.io/component: job
       app.kubernetes.io/managed-by: k8srun
   spec:
+    serviceAccount: autosys
     volumes:
       - name: temp
         emptyDir:
