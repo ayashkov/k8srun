@@ -135,6 +135,11 @@ func (cluster *Cluster) getPodTemplate(job *Job) (*core.PodTemplate, error) {
 		return nil, err
 	}
 
+	if nConts := len(template.Template.Spec.Containers); nConts != 1 {
+		return nil, fmt.Errorf("only one container per pod is supported, %q has %v",
+			template.Name, nConts)
+	}
+
 	return template, nil
 }
 
