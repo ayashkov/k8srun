@@ -12,7 +12,7 @@ template:
       app.kubernetes.io/component: job
       app.kubernetes.io/managed-by: k8srun
   spec:
-    serviceAccount: autosys
+    restartPolicy: Never
     volumes:
       - name: temp
         emptyDir:
@@ -20,6 +20,7 @@ template:
     containers:
       - name: job
         image: alpine:latest
+        imagePullPolicy: Always
         command: []
         env:
           - name: JOB_TEMP
