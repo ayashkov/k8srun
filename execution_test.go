@@ -13,8 +13,7 @@ import (
 )
 
 func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	m := mocks.NewMockPodInterface(ctrl)
+	pods := mocks.NewMockPodInterface(gomock.NewController(t))
 	execution := Execution{
 		pod: &core.Pod{
 			ObjectMeta: meta.ObjectMeta{
@@ -22,29 +21,27 @@ func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
 				Namespace: "namespace",
 			},
 		},
-		pods: m,
+		pods: pods,
 	}
 
-	m.EXPECT().
+	pods.EXPECT().
 		Delete(context.TODO(), "delete-me", meta.DeleteOptions{})
 
 	assert.NilError(t, execution.Delete())
 }
 
 func Test_Execution_Delete_DoesNothing_WhenNoPodIsProvided(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	m := mocks.NewMockPodInterface(ctrl)
+	pods := mocks.NewMockPodInterface(gomock.NewController(t))
 	execution := Execution{
 		pod:  nil,
-		pods: m,
+		pods: pods,
 	}
 
 	assert.NilError(t, execution.Delete())
 }
 
 func Test_Execution_Delete_ReturnsError_WhenDeleteFails(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	m := mocks.NewMockPodInterface(ctrl)
+	pods := mocks.NewMockPodInterface(gomock.NewController(t))
 	execution := Execution{
 		pod: &core.Pod{
 			ObjectMeta: meta.ObjectMeta{
@@ -52,10 +49,10 @@ func Test_Execution_Delete_ReturnsError_WhenDeleteFails(t *testing.T) {
 				Namespace: "namespace",
 			},
 		},
-		pods: m,
+		pods: pods,
 	}
 
-	m.EXPECT().
+	pods.EXPECT().
 		Delete(context.TODO(), "delete-me", meta.DeleteOptions{}).
 		Return(fmt.Errorf("delete error"))
 
