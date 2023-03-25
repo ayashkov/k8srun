@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -90,7 +89,7 @@ func (cluster *Cluster) Start(job *Job) (*Execution, error) {
 		return nil, err
 	}
 
-	log.Infof("created pod %q in %q namespace", execution.pod.Name,
+	logger.Infof("created pod %q in %q namespace", execution.pod.Name,
 		execution.pod.Namespace)
 
 	return &execution, nil
@@ -105,7 +104,7 @@ func (cluster *Cluster) Run(job *Job, out io.Writer) (int, error) {
 
 	defer func() {
 		if err := execution.Delete(); err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 	}()
 

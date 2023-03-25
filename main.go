@@ -3,9 +3,11 @@ package main
 import (
 	"os"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+var logger *logrus.Logger = logrus.New()
 
 func main() {
 	if err := runCommand().Execute(); err != nil {
@@ -29,7 +31,7 @@ execute Kubernetes workload from AutoSys jobs.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if job.Instance == "" || job.Name == "" {
-				log.Fatal(
+				logger.Fatal(
 					"both AUTOSERV and AUTO_JOB_NAME environment variables are required")
 			}
 
@@ -40,7 +42,7 @@ execute Kubernetes workload from AutoSys jobs.`,
 			exitCode, err := cluster.Run(&job, os.Stdout)
 
 			if err != nil {
-				log.Error(err)
+				logger.Error(err)
 			}
 
 			os.Exit(exitCode)

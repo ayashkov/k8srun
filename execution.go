@@ -6,7 +6,6 @@ import (
 	"io"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -108,7 +107,7 @@ func (execution *Execution) Delete() error {
 			execution.pod.Name, execution.pod.Namespace, err)
 	}
 
-	log.Infof("deleted pod %q in %q namespace", execution.pod.Name,
+	logger.Infof("deleted pod %q in %q namespace", execution.pod.Name,
 		execution.pod.Namespace)
 
 	execution.pod = nil
