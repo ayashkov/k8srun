@@ -25,12 +25,24 @@ type Job struct {
 	Args      []string
 }
 
-type Cluster struct {
+type ClusterFactory interface {
+	New(kubeconfig string) Cluster
+}
+
+type Cluster interface {
+	Run(job *Job, out io.Writer) (int, error)
+	Start(job *Job) (*Execution, error)
+	GetPodTemplate(job *Job) (*core.PodTemplate, error)
+}
+
+type defaultClusterFactory struct{}
+
+type defaultCluster struct {
 	clentset  *kubernetes.Clientset
 	namespace string
 }
 
-func NewCluster(kubeconfig string) *Cluster {
+func (defaultClusterFactory) New(kubeconfig string) Cluster {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 	rules.ExplicitPath = kubeconfig
@@ -55,14 +67,14 @@ func NewCluster(kubeconfig string) *Cluster {
 		panic(err.Error())
 	}
 
-	return &Cluster{
+	return &defaultCluster{
 		clentset:  clientset,
 		namespace: namespace,
 	}
 }
 
-func (cluster *Cluster) Start(job *Job) (*Execution, error) {
-	template, err := cluster.getPodTemplate(job)
+func (cluster *defaultCluster) Start(job *Job) (*Execution, error) {
+	template, err := cluster.GetPodTemplate(job)
 
 	if err != nil {
 		return nil, err
@@ -95,7 +107,7 @@ func (cluster *Cluster) Start(job *Job) (*Execution, error) {
 	return &execution, nil
 }
 
-func (cluster *Cluster) Run(job *Job, out io.Writer) (int, error) {
+func (cluster *defaultCluster) Run(job *Job, out io.Writer) (int, error) {
 	execution, err := cluster.Start(job)
 
 	if err != nil {
@@ -117,15 +129,17 @@ func (cluster *Cluster) Run(job *Job, out io.Writer) (int, error) {
 	return execution.WaitForCompletion()
 }
 
-func (cluster *Cluster) getPodTemplate(job *Job) (*core.PodTemplate, error) {
+func (cluster *defaultCluster) GetPodTemplate(job *Job) (*core.PodTemplate, error) {
 	namespace := job.Namespace
 
 	if namespace == "" {
 		namespace = cluster.namespace
 	}
 
-	template, err := cluster.clentset.CoreV1().PodTemplates(namespace).Get(
-		context.TODO(), job.Template, meta.GetOptions{})
+	template, err := cluster.clentset.
+		CoreV1().
+		PodTemplates(namespace).
+		Get(context.TODO(), job.Template, meta.GetOptions{})
 
 	if err != nil {
 		return nil, err

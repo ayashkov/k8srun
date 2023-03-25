@@ -9,12 +9,12 @@ import (
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	coreAccessor "k8s.io/client-go/kubernetes/typed/core/v1"
+	typedCore "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 type Execution struct {
 	job  *Job
-	pods coreAccessor.PodInterface
+	pods typedCore.PodInterface
 	pod  *core.Pod
 }
 
