@@ -1,15 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	if err := runCommand().Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }
@@ -22,34 +21,26 @@ func runCommand() *cobra.Command {
 		Name:     os.Getenv("AUTO_JOB_NAME"),
 	}
 	cmd := &cobra.Command{
-		Use:   "go-study [flags] template [-- args ...]",
+		Use:   "k8srun [flags] template [-- args ...]",
 		Short: "AutoSys to Kubernetes bridge",
-		Long: `This is an attempt to implement a bridge between AutoSys
-scheduler and a Kubernetes cluster. The goal is to be able
-to execute Kubernetes workload from AutoSys jobs.`,
+		Long: `This is a bridge between an AutoSys scheduler and
+a Kubernetes cluster. The goal is to be able to
+execute Kubernetes workload from AutoSys jobs.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			if job.Instance == "" || job.Name == "" {
+				log.Fatal(
+					"both AUTOSERV and AUTO_JOB_NAME environment variables are required")
+			}
+
 			job.Template = args[0]
 			job.Args = args[1:]
-
-			fmt.Println("Kubeconfig:", kubeconfig)
-			fmt.Println("Instance:", job.Instance)
-			fmt.Println("Job:", job.Name)
-			fmt.Println("Namespace:", job.Namespace)
-			fmt.Println("Template:", job.Template)
-			fmt.Println("Args:", job.Args)
-
-			if job.Instance == "" || job.Name == "" {
-				fmt.Println("Both AUTOSERV and AUTO_JOB_NAME environment variables are required")
-
-				os.Exit(1)
-			}
 
 			cluster := NewCluster(kubeconfig)
 			exitCode, err := cluster.Run(&job, os.Stdout)
 
 			if err != nil {
-				fmt.Println("Error:", err.Error())
+				log.Error(err)
 			}
 
 			os.Exit(exitCode)

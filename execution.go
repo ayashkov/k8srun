@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -102,15 +103,15 @@ func (execution *Execution) Delete() error {
 	err := execution.pods.Delete(context.TODO(), execution.pod.Name,
 		meta.DeleteOptions{})
 
-	if err == nil {
-		fmt.Printf("Deleted pod %q in %q namespace\n", execution.pod.Name,
-			execution.pod.Namespace)
-
-		execution.pod = nil
-	} else {
-		fmt.Printf("Failure deleting pod %q in %q namespace: %v\n",
-			execution.pod.Name, execution.pod.Namespace, err.Error())
+	if err != nil {
+		return fmt.Errorf("error deleting pod %q in %q namespace: %w",
+			execution.pod.Name, execution.pod.Namespace, err)
 	}
 
-	return err
+	log.Infof("deleted pod %q in %q namespace", execution.pod.Name,
+		execution.pod.Namespace)
+
+	execution.pod = nil
+
+	return nil
 }

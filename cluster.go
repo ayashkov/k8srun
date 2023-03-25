@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -89,7 +90,7 @@ func (cluster *Cluster) Start(job *Job) (*Execution, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Created pod %q in %q namespace\n", execution.pod.Name,
+	log.Infof("created pod %q in %q namespace", execution.pod.Name,
 		execution.pod.Namespace)
 
 	return &execution, nil
@@ -102,7 +103,11 @@ func (cluster *Cluster) Run(job *Job, out io.Writer) (int, error) {
 		return 128, err
 	}
 
-	defer execution.Delete()
+	defer func() {
+		if err := execution.Delete(); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	err = execution.CopyLogs(out)
 
@@ -127,7 +132,8 @@ func (cluster *Cluster) getPodTemplate(job *Job) (*core.PodTemplate, error) {
 		return nil, err
 	}
 
-	if err = checkAnnotation(template, INSTANCE, strings.ToLower(job.Instance)); err != nil {
+	if err = checkAnnotation(template, INSTANCE,
+		strings.ToLower(job.Instance)); err != nil {
 		return nil, err
 	}
 
@@ -136,8 +142,9 @@ func (cluster *Cluster) getPodTemplate(job *Job) (*core.PodTemplate, error) {
 	}
 
 	if nConts := len(template.Template.Spec.Containers); nConts != 1 {
-		return nil, fmt.Errorf("only one container per pod is supported, %q has %v",
-			template.Name, nConts)
+		return nil,
+			fmt.Errorf("only one container per pod is supported, %q has %v",
+				template.Name, nConts)
 	}
 
 	return template, nil

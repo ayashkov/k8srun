@@ -56,5 +56,6 @@ func Test_Execution_Delete_ReturnsError_WhenDeleteFails(t *testing.T) {
 		Delete(context.TODO(), "delete-me", meta.DeleteOptions{}).
 		Return(fmt.Errorf("delete error"))
 
-	assert.Error(t, execution.Delete(), "delete error")
+	assert.Error(t, execution.Delete(),
+		"error deleting pod \"delete-me\" in \"namespace\" namespace: delete error")
 }
