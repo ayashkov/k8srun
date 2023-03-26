@@ -1,27 +1,23 @@
 package main
 
 import (
-	. "github.com/ayashkov/k8srun/os"
-	"github.com/sirupsen/logrus"
+	"github.com/ayashkov/k8srun/runner"
+	"github.com/ayashkov/k8srun/service"
 	"github.com/spf13/cobra"
 )
 
-var logger *logrus.Logger = logrus.New()
-
-var clusterFactory ClusterFactory = defaultClusterFactory{}
-
 func main() {
 	if err := runCommand().Execute(); err != nil {
-		Os.Exit(1)
+		service.Os.Exit(1)
 	}
 }
 
 func runCommand() *cobra.Command {
 	var kubeconfig string
 
-	job := Job{
-		Instance: Os.Getenv("AUTOSERV"),
-		Name:     Os.Getenv("AUTO_JOB_NAME"),
+	job := runner.Job{
+		Instance: service.Os.Getenv("AUTOSERV"),
+		Name:     service.Os.Getenv("AUTO_JOB_NAME"),
 	}
 	cmd := &cobra.Command{
 		Use:   "k8srun [flags] template [-- args ...]",
@@ -32,21 +28,21 @@ execute Kubernetes workload from AutoSys jobs.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if job.Instance == "" || job.Name == "" {
-				logger.Fatal(
+				service.Logger.Fatal(
 					"both AUTOSERV and AUTO_JOB_NAME environment variables are required")
 			}
 
 			job.Template = args[0]
 			job.Args = args[1:]
 
-			cluster := clusterFactory.New(kubeconfig)
-			exitCode, err := cluster.Run(&job, Os.Stdout())
+			cluster := runner.Factory.New(kubeconfig)
+			exitCode, err := cluster.Run(&job, service.Os.Stdout())
 
 			if err != nil {
-				logger.Error(err)
+				service.Logger.Error(err)
 			}
 
-			Os.Exit(exitCode)
+			service.Os.Exit(exitCode)
 		},
 	}
 

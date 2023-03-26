@@ -1,12 +1,12 @@
-package main
+package runner
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
-	"github.com/ayashkov/k8srun/mocks"
-	gomock "github.com/golang/mock/gomock"
+	"github.com/ayashkov/k8srun/mock"
+	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	core "k8s.io/api/core/v1"
@@ -14,7 +14,7 @@ import (
 )
 
 func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
-	pods := mocks.NewMockPodInterface(gomock.NewController(t))
+	pods := mock.NewMockPodInterface(gomock.NewController(t))
 	execution := Execution{
 		pod: &core.Pod{
 			ObjectMeta: meta.ObjectMeta{
@@ -38,7 +38,7 @@ func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
 }
 
 func Test_Execution_Delete_DoesNothing_WhenNoPodIsProvided(t *testing.T) {
-	pods := mocks.NewMockPodInterface(gomock.NewController(t))
+	pods := mock.NewMockPodInterface(gomock.NewController(t))
 	execution := Execution{
 		pod:  nil,
 		pods: pods,
@@ -51,7 +51,7 @@ func Test_Execution_Delete_DoesNothing_WhenNoPodIsProvided(t *testing.T) {
 }
 
 func Test_Execution_Delete_ReturnsError_WhenDeleteFails(t *testing.T) {
-	pods := mocks.NewMockPodInterface(gomock.NewController(t))
+	pods := mock.NewMockPodInterface(gomock.NewController(t))
 	execution := Execution{
 		pod: &core.Pod{
 			ObjectMeta: meta.ObjectMeta{

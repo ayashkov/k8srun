@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"context"
@@ -7,74 +7,28 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ayashkov/k8srun/service"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 const INSTANCE = "k8srun.yashkov.org/instance"
 
 const PREFIX = "k8srun.yashkov.org/prefix"
 
-type Job struct {
-	Instance  string
-	Name      string
-	Namespace string
-	Template  string
-	Args      []string
-}
-
-type ClusterFactory interface {
-	New(kubeconfig string) Cluster
-}
-
-type Cluster interface {
+type Runner interface {
 	Run(job *Job, out io.Writer) (int, error)
 	Start(job *Job) (*Execution, error)
-	GetPodTemplate(job *Job) (*core.PodTemplate, error)
 }
 
-type defaultClusterFactory struct{}
-
-type defaultCluster struct {
+type defaultRunner struct {
 	clentset  *kubernetes.Clientset
 	namespace string
 }
 
-func (defaultClusterFactory) New(kubeconfig string) Cluster {
-	rules := clientcmd.NewDefaultClientConfigLoadingRules()
-
-	rules.ExplicitPath = kubeconfig
-
-	clientConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		rules, &clientcmd.ConfigOverrides{})
-	namespace, _, err := clientConfig.Namespace()
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	config, err := clientConfig.ClientConfig()
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	return &defaultCluster{
-		clentset:  clientset,
-		namespace: namespace,
-	}
-}
-
-func (cluster *defaultCluster) Start(job *Job) (*Execution, error) {
-	template, err := cluster.GetPodTemplate(job)
+func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
+	template, err := runner.getPodTemplate(job)
 
 	if err != nil {
 		return nil, err
@@ -82,7 +36,7 @@ func (cluster *defaultCluster) Start(job *Job) (*Execution, error) {
 
 	execution := Execution{job: job}
 
-	execution.pods = cluster.clentset.CoreV1().Pods(template.Namespace)
+	execution.pods = runner.clentset.CoreV1().Pods(template.Namespace)
 
 	def := &core.Pod{
 		ObjectMeta: template.Template.ObjectMeta,
@@ -101,14 +55,14 @@ func (cluster *defaultCluster) Start(job *Job) (*Execution, error) {
 		return nil, err
 	}
 
-	logger.Infof("created pod %q in %q namespace", execution.pod.Name,
-		execution.pod.Namespace)
+	service.Logger.Infof("created pod %q in %q namespace",
+		execution.pod.Name, execution.pod.Namespace)
 
 	return &execution, nil
 }
 
-func (cluster *defaultCluster) Run(job *Job, out io.Writer) (int, error) {
-	execution, err := cluster.Start(job)
+func (runner *defaultRunner) Run(job *Job, out io.Writer) (int, error) {
+	execution, err := runner.Start(job)
 
 	if err != nil {
 		return 128, err
@@ -116,7 +70,7 @@ func (cluster *defaultCluster) Run(job *Job, out io.Writer) (int, error) {
 
 	defer func() {
 		if err := execution.Delete(); err != nil {
-			logger.Error(err)
+			service.Logger.Error(err)
 		}
 	}()
 
@@ -129,14 +83,14 @@ func (cluster *defaultCluster) Run(job *Job, out io.Writer) (int, error) {
 	return execution.WaitForCompletion()
 }
 
-func (cluster *defaultCluster) GetPodTemplate(job *Job) (*core.PodTemplate, error) {
+func (runner *defaultRunner) getPodTemplate(job *Job) (*core.PodTemplate, error) {
 	namespace := job.Namespace
 
 	if namespace == "" {
-		namespace = cluster.namespace
+		namespace = runner.namespace
 	}
 
-	template, err := cluster.clentset.
+	template, err := runner.clentset.
 		CoreV1().
 		PodTemplates(namespace).
 		Get(context.TODO(), job.Template, meta.GetOptions{})

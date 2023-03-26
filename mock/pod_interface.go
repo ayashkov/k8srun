@@ -2,7 +2,7 @@
 // Source: k8s.io/client-go/kubernetes/typed/core/v1 (interfaces: PodInterface)
 
 // Package mock_v1 is a generated GoMock package.
-package mocks
+package mock
 
 import (
 	context "context"
