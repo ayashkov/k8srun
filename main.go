@@ -7,12 +7,12 @@ import (
 )
 
 func main() {
-	if err := runCommand().Execute(); err != nil {
+	if err := newRunCommand().Execute(); err != nil {
 		service.Os.Exit(1)
 	}
 }
 
-func runCommand() *cobra.Command {
+func newRunCommand() *cobra.Command {
 	var kubeconfig string
 
 	job := runner.Job{
@@ -28,7 +28,7 @@ execute Kubernetes workload from AutoSys jobs.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if job.Instance == "" || job.Name == "" {
-				service.Logger.Fatal(
+				service.Log.Fatal(
 					"both AUTOSERV and AUTO_JOB_NAME environment variables are required")
 			}
 
@@ -39,7 +39,7 @@ execute Kubernetes workload from AutoSys jobs.`,
 			exitCode, err := cluster.Run(&job, service.Os.Stdout())
 
 			if err != nil {
-				service.Logger.Error(err)
+				service.Log.Error(err)
 			}
 
 			service.Os.Exit(exitCode)
@@ -50,6 +50,10 @@ execute Kubernetes workload from AutoSys jobs.`,
 		"Kubernetes client configuration file")
 	cmd.PersistentFlags().StringVarP(&job.Namespace, "namespace", "n", "",
 		"The namespace for creating the pod")
+	cmd.SetArgs(service.Os.Args()[1:])
+	cmd.SetErr(service.Os.Stderr())
+	cmd.SetIn(service.Os.Stdin())
+	cmd.SetOut(service.Os.Stdout())
 
 	return cmd
 }

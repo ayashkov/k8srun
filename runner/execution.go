@@ -108,7 +108,7 @@ func (execution *Execution) Delete() error {
 			execution.pod.Name, execution.pod.Namespace, err)
 	}
 
-	service.Logger.Infof("deleted pod %q in %q namespace",
+	service.Log.Infof("deleted pod %q in %q namespace",
 		execution.pod.Name, execution.pod.Namespace)
 
 	execution.pod = nil

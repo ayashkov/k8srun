@@ -55,7 +55,7 @@ func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
 		return nil, err
 	}
 
-	service.Logger.Infof("created pod %q in %q namespace",
+	service.Log.Infof("created pod %q in %q namespace",
 		execution.pod.Name, execution.pod.Namespace)
 
 	return &execution, nil
@@ -70,7 +70,7 @@ func (runner *defaultRunner) Run(job *Job, out io.Writer) (int, error) {
 
 	defer func() {
 		if err := execution.Delete(); err != nil {
-			service.Logger.Error(err)
+			service.Log.Error(err)
 		}
 	}()
 
