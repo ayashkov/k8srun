@@ -9,11 +9,9 @@ type RunnerFactory interface {
 	New(kubeconfig string) Runner
 }
 
-type defaultRunnerFactory struct{}
+type DefaultRunnerFactory struct{}
 
-var Factory RunnerFactory = defaultRunnerFactory{}
-
-func (defaultRunnerFactory) New(kubeconfig string) Runner {
+func (DefaultRunnerFactory) New(kubeconfig string) Runner {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 	rules.ExplicitPath = kubeconfig

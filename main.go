@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var runnerFactory runner.RunnerFactory = runner.DefaultRunnerFactory{}
+
 func main() {
 	if err := newRunCommand().Execute(); err != nil {
 		service.Os.Exit(1)
@@ -35,7 +37,7 @@ execute Kubernetes workload from AutoSys jobs.`,
 			job.Template = args[0]
 			job.Args = args[1:]
 
-			cluster := runner.Factory.New(kubeconfig)
+			cluster := runnerFactory.New(kubeconfig)
 			exitCode, err := cluster.Run(&job, service.Os.Stdout())
 
 			if err != nil {

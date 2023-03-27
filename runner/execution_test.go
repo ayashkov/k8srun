@@ -1,4 +1,4 @@
-package runner
+package runner_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ayashkov/k8srun/mock"
+	"github.com/ayashkov/k8srun/runner"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +15,7 @@ import (
 )
 
 func setUp(t *testing.T) *assert.Assertions {
-	logger.Reset()
+	t.Cleanup(logger.Reset)
 
 	return assert.New(t)
 }
@@ -22,14 +23,14 @@ func setUp(t *testing.T) *assert.Assertions {
 func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
 	assert := setUp(t)
 	pods := mock.NewMockPodInterface(gomock.NewController(t))
-	execution := Execution{
-		pod: &core.Pod{
+	execution := runner.Execution{
+		Pod: &core.Pod{
 			ObjectMeta: meta.ObjectMeta{
 				Name:      "delete-me",
 				Namespace: "namespace",
 			},
 		},
-		pods: pods,
+		Pods: pods,
 	}
 
 	pods.EXPECT().
@@ -46,9 +47,9 @@ func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
 func Test_Execution_Delete_DoesNothing_WhenNoPodIsProvided(t *testing.T) {
 	assert := setUp(t)
 	pods := mock.NewMockPodInterface(gomock.NewController(t))
-	execution := Execution{
-		pod:  nil,
-		pods: pods,
+	execution := runner.Execution{
+		Pod:  nil,
+		Pods: pods,
 	}
 
 	assert.Nil(execution.Delete())
@@ -59,14 +60,14 @@ func Test_Execution_Delete_DoesNothing_WhenNoPodIsProvided(t *testing.T) {
 func Test_Execution_Delete_ReturnsError_WhenDeleteFails(t *testing.T) {
 	assert := setUp(t)
 	pods := mock.NewMockPodInterface(gomock.NewController(t))
-	execution := Execution{
-		pod: &core.Pod{
+	execution := runner.Execution{
+		Pod: &core.Pod{
 			ObjectMeta: meta.ObjectMeta{
 				Name:      "delete-me",
 				Namespace: "namespace",
 			},
 		},
-		pods: pods,
+		Pods: pods,
 	}
 
 	pods.EXPECT().

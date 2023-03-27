@@ -14,21 +14,21 @@ import (
 )
 
 type Execution struct {
-	job  *Job
-	pods typedCore.PodInterface
-	pod  *core.Pod
+	Job  *Job
+	Pods typedCore.PodInterface
+	Pod  *core.Pod
 }
 
 func (execution *Execution) CopyLogs(dst io.Writer) error {
 	err := wait.PollImmediate(2*time.Second, time.Minute, func() (done bool, err error) {
-		pod, err := execution.pods.Get(context.TODO(), execution.pod.Name,
+		pod, err := execution.Pods.Get(context.TODO(), execution.Pod.Name,
 			meta.GetOptions{})
 
 		if err != nil {
 			return false, err
 		}
 
-		execution.pod = pod
+		execution.Pod = pod
 
 		phase := pod.Status.Phase
 
@@ -44,7 +44,7 @@ func (execution *Execution) CopyLogs(dst io.Writer) error {
 		return err
 	}
 
-	log, err := execution.pods.GetLogs(execution.pod.Name,
+	log, err := execution.Pods.GetLogs(execution.Pod.Name,
 		&core.PodLogOptions{Follow: true}).Stream(context.TODO())
 
 	if err != nil {
@@ -62,14 +62,14 @@ func (execution *Execution) WaitForCompletion() (int, error) {
 	var exitCode int
 
 	err := wait.PollImmediate(2*time.Second, time.Minute, func() (done bool, err error) {
-		pod, err := execution.pods.Get(context.TODO(), execution.pod.Name,
+		pod, err := execution.Pods.Get(context.TODO(), execution.Pod.Name,
 			meta.GetOptions{})
 
 		if err != nil {
 			return false, err
 		}
 
-		execution.pod = pod
+		execution.Pod = pod
 
 		containerStatuses := pod.Status.ContainerStatuses
 
@@ -96,22 +96,22 @@ func (execution *Execution) WaitForCompletion() (int, error) {
 }
 
 func (execution *Execution) Delete() error {
-	if execution.pod == nil {
+	if execution.Pod == nil {
 		return nil
 	}
 
-	err := execution.pods.Delete(context.TODO(), execution.pod.Name,
+	err := execution.Pods.Delete(context.TODO(), execution.Pod.Name,
 		meta.DeleteOptions{})
 
 	if err != nil {
 		return fmt.Errorf("error deleting pod %q in %q namespace: %w",
-			execution.pod.Name, execution.pod.Namespace, err)
+			execution.Pod.Name, execution.Pod.Namespace, err)
 	}
 
 	service.Log.Infof("deleted pod %q in %q namespace",
-		execution.pod.Name, execution.pod.Namespace)
+		execution.Pod.Name, execution.Pod.Namespace)
 
-	execution.pod = nil
+	execution.Pod = nil
 
 	return nil
 }

@@ -4,12 +4,34 @@ import (
 	"testing"
 
 	"github.com/ayashkov/k8srun/mock"
+	"github.com/ayashkov/k8srun/runner"
+	"github.com/ayashkov/k8srun/service"
+	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
+var mockRunnerFactory *mock.MockRunnerFactory
+
+var mockRunner *mock.MockRunner
+
 func setUp(t *testing.T, args ...string) *assert.Assertions {
-	logger.Reset()
+	prevRunnerFactory := runnerFactory
+
+	t.Cleanup(logger.Reset)
+	t.Cleanup(func() {
+		runnerFactory = prevRunnerFactory
+		mockRunner = nil
+		mockRunnerFactory = nil
+		mockOs.StderrBuffer().Reset()
+		mockOs.StdoutBuffer().Reset()
+	})
+
+	ctrl := gomock.NewController(t)
+	mockRunnerFactory = mock.NewMockRunnerFactory(ctrl)
+	mockRunner = mock.NewMockRunner(ctrl)
+	runnerFactory = mockRunnerFactory
+
 	mockOs.Setenv("AUTOSERV", "ACE")
 	mockOs.Setenv("AUTO_JOB_NAME", "TEST_JOB")
 	mockOs.SetArgs(args...)
@@ -48,4 +70,21 @@ func Test_MainLogsErrorAndExits_WhenNoAutoJobName(t *testing.T) {
 	assert.Equal(1, len(logger.Entries))
 	assert.Equal(logrus.FatalLevel, logger.LastEntry().Level)
 	assert.Contains(logger.LastEntry().Message, "AUTOSERV and AUTO_JOB_NAME")
+}
+
+func Test_MainRunsJobAndExits_Normally(t *testing.T) {
+	assert := setUp(t, "k8srun", "template")
+
+	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
+	mockRunner.EXPECT().Run(&runner.Job{
+		Instance:  "ACE",
+		Name:      "TEST_JOB",
+		Namespace: "",
+		Template:  "template",
+		Args:      []string{},
+	}, service.Os.Stdout()).Return(0, nil)
+
+	mock.ExitsWith(t, 0, main)
+
+	assert.Empty(logger.Entries)
 }

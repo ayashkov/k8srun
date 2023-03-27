@@ -34,9 +34,9 @@ func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
 		return nil, err
 	}
 
-	execution := Execution{job: job}
+	execution := Execution{Job: job}
 
-	execution.pods = runner.clentset.CoreV1().Pods(template.Namespace)
+	execution.Pods = runner.clentset.CoreV1().Pods(template.Namespace)
 
 	def := &core.Pod{
 		ObjectMeta: template.Template.ObjectMeta,
@@ -48,7 +48,7 @@ func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
 	def.ObjectMeta.GenerateName = generateName(job.Name)
 	def.Spec.Containers[0].Args = job.Args
 
-	execution.pod, err = execution.pods.Create(context.TODO(), def,
+	execution.Pod, err = execution.Pods.Create(context.TODO(), def,
 		meta.CreateOptions{})
 
 	if err != nil {
@@ -56,7 +56,7 @@ func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
 	}
 
 	service.Log.Infof("created pod %q in %q namespace",
-		execution.pod.Name, execution.pod.Namespace)
+		execution.Pod.Name, execution.Pod.Namespace)
 
 	return &execution, nil
 }
