@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ayashkov/k8srun/mock"
@@ -39,7 +40,7 @@ func setUp(t *testing.T, args ...string) *assert.Assertions {
 	return assert.New(t)
 }
 
-func Test_MainShowsUsageAndExits_WhenNoArgs(t *testing.T) {
+func Test_MainShowsUsage_WhenNoArgs(t *testing.T) {
 	assert := setUp(t, "k8srun")
 
 	mock.ExitsWith(t, 1, main)
@@ -50,7 +51,7 @@ func Test_MainShowsUsageAndExits_WhenNoArgs(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainLogsErrorAndExits_WhenNoAutoserv(t *testing.T) {
+func Test_MainLogsError_WhenNoAutoserv(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 	mockOs.Setenv("AUTOSERV", "")
 
@@ -61,7 +62,7 @@ func Test_MainLogsErrorAndExits_WhenNoAutoserv(t *testing.T) {
 	assert.Contains(logger.LastEntry().Message, "AUTOSERV and AUTO_JOB_NAME")
 }
 
-func Test_MainLogsErrorAndExits_WhenNoAutoJobName(t *testing.T) {
+func Test_MainLogsError_WhenNoAutoJobName(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 	mockOs.Setenv("AUTO_JOB_NAME", "")
 
@@ -72,7 +73,7 @@ func Test_MainLogsErrorAndExits_WhenNoAutoJobName(t *testing.T) {
 	assert.Contains(logger.LastEntry().Message, "AUTOSERV and AUTO_JOB_NAME")
 }
 
-func Test_MainRunsJobAndExits_Normally(t *testing.T) {
+func Test_MainRunsJob_Normally(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
 	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
@@ -87,4 +88,29 @@ func Test_MainRunsJobAndExits_Normally(t *testing.T) {
 	mock.ExitsWith(t, 0, main)
 
 	assert.Empty(logger.Entries)
+}
+
+func Test_MainUsesContainerExitCode_WhenProvided(t *testing.T) {
+	assert := setUp(t, "k8srun", "template")
+
+	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
+	mockRunner.EXPECT().Run(gomock.Any(), gomock.Any()).Return(42, nil)
+
+	mock.ExitsWith(t, 42, main)
+
+	assert.Empty(logger.Entries)
+}
+
+func Test_MainLogsError_WhenRunReportsError(t *testing.T) {
+	assert := setUp(t, "k8srun", "template")
+
+	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
+	mockRunner.EXPECT().Run(gomock.Any(), gomock.Any()).
+		Return(-1, fmt.Errorf("error running"))
+
+	mock.ExitsWith(t, 128, main)
+
+	assert.Equal(1, len(logger.Entries))
+	assert.Equal(logrus.ErrorLevel, logger.LastEntry().Level)
+	assert.Equal(logger.LastEntry().Message, "error running")
 }

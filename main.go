@@ -42,6 +42,7 @@ execute Kubernetes workload from AutoSys jobs.`,
 
 			if err != nil {
 				service.Log.Error(err)
+				service.Os.Exit(128)
 			}
 
 			service.Os.Exit(exitCode)

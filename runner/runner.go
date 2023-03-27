@@ -65,7 +65,7 @@ func (runner *defaultRunner) Run(job *Job, out io.Writer) (int, error) {
 	execution, err := runner.Start(job)
 
 	if err != nil {
-		return 128, err
+		return -1, err
 	}
 
 	defer func() {
@@ -77,7 +77,7 @@ func (runner *defaultRunner) Run(job *Job, out io.Writer) (int, error) {
 	err = execution.CopyLogs(out)
 
 	if err != nil {
-		return 128, err
+		return -1, err
 	}
 
 	return execution.WaitForCompletion()
