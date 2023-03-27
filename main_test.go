@@ -53,6 +53,7 @@ func Test_MainShowsUsage_WhenNoArgs(t *testing.T) {
 
 func Test_MainLogsError_WhenNoAutoserv(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
+
 	mockOs.Setenv("AUTOSERV", "")
 
 	mock.ExitsWith(t, 1, main)
@@ -64,6 +65,7 @@ func Test_MainLogsError_WhenNoAutoserv(t *testing.T) {
 
 func Test_MainLogsError_WhenNoAutoJobName(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
+
 	mockOs.Setenv("AUTO_JOB_NAME", "")
 
 	mock.ExitsWith(t, 1, main)
@@ -83,6 +85,68 @@ func Test_MainRunsJob_Normally(t *testing.T) {
 		Namespace: "",
 		Template:  "template",
 		Args:      []string{},
+	}, service.Os.Stdout()).Return(0, nil)
+
+	mock.ExitsWith(t, 0, main)
+
+	assert.Empty(logger.Entries)
+}
+
+func Test_MainUsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
+	assert := setUp(t, "k8srun", "template", "--kubeconfig=k8s.conf")
+
+	mockRunnerFactory.EXPECT().New("k8s.conf").Return(mockRunner)
+	mockRunner.EXPECT().Run(gomock.Any(), gomock.Any()).Return(0, nil)
+
+	mock.ExitsWith(t, 0, main)
+
+	assert.Empty(logger.Entries)
+}
+
+func Test_MainSuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
+	assert := setUp(t, "k8srun", "template", "--namespace=build")
+
+	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
+	mockRunner.EXPECT().Run(&runner.Job{
+		Instance:  "ACE",
+		Name:      "TEST_JOB",
+		Namespace: "build",
+		Template:  "template",
+		Args:      []string{},
+	}, service.Os.Stdout()).Return(0, nil)
+
+	mock.ExitsWith(t, 0, main)
+
+	assert.Empty(logger.Entries)
+}
+
+func Test_MainSuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
+	assert := setUp(t, "k8srun", "template", "-n", "dev")
+
+	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
+	mockRunner.EXPECT().Run(&runner.Job{
+		Instance:  "ACE",
+		Name:      "TEST_JOB",
+		Namespace: "dev",
+		Template:  "template",
+		Args:      []string{},
+	}, service.Os.Stdout()).Return(0, nil)
+
+	mock.ExitsWith(t, 0, main)
+
+	assert.Empty(logger.Entries)
+}
+
+func Test_MainSuppliesArgsToContainer_WhenProvided(t *testing.T) {
+	assert := setUp(t, "k8srun", "template", "--", "ls", "-la", "/")
+
+	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
+	mockRunner.EXPECT().Run(&runner.Job{
+		Instance:  "ACE",
+		Name:      "TEST_JOB",
+		Namespace: "",
+		Template:  "template",
+		Args:      []string{"ls", "-la", "/"},
 	}, service.Os.Stdout()).Return(0, nil)
 
 	mock.ExitsWith(t, 0, main)
