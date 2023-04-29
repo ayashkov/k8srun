@@ -18,8 +18,8 @@ const INSTANCE = "k8srun.yashkov.org/instance"
 const PREFIX = "k8srun.yashkov.org/prefix"
 
 type Runner interface {
-	Run(job *Job, out io.Writer) (int, error)
-	Start(job *Job) (*Execution, error)
+	Run(ctx context.Context, job *Job, out io.Writer) (int, error)
+	Start(ctx context.Context, job *Job) (*Execution, error)
 }
 
 type defaultRunner struct {
@@ -27,8 +27,9 @@ type defaultRunner struct {
 	namespace string
 }
 
-func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
-	template, err := runner.getPodTemplate(job)
+func (runner *defaultRunner) Start(ctx context.Context,
+	job *Job) (*Execution, error) {
+	template, err := runner.getPodTemplate(ctx, job)
 
 	if err != nil {
 		return nil, err
@@ -48,8 +49,7 @@ func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
 	def.ObjectMeta.GenerateName = generateName(job.Name)
 	def.Spec.Containers[0].Args = job.Args
 
-	execution.Pod, err = execution.Pods.Create(context.TODO(), def,
-		meta.CreateOptions{})
+	execution.Pod, err = execution.Pods.Create(ctx, def, meta.CreateOptions{})
 
 	if err != nil {
 		return nil, err
@@ -61,29 +61,31 @@ func (runner *defaultRunner) Start(job *Job) (*Execution, error) {
 	return &execution, nil
 }
 
-func (runner *defaultRunner) Run(job *Job, out io.Writer) (int, error) {
-	execution, err := runner.Start(job)
+func (runner *defaultRunner) Run(ctx context.Context, job *Job,
+	out io.Writer) (int, error) {
+	execution, err := runner.Start(ctx, job)
 
 	if err != nil {
 		return -1, err
 	}
 
 	defer func() {
-		if err := execution.Delete(); err != nil {
+		if err := execution.Delete(ctx); err != nil {
 			service.Log.Error(err)
 		}
 	}()
 
-	err = execution.CopyLogs(out)
+	err = execution.CopyLogs(ctx, out)
 
 	if err != nil {
 		return -1, err
 	}
 
-	return execution.WaitForCompletion()
+	return execution.WaitForCompletion(ctx)
 }
 
-func (runner *defaultRunner) getPodTemplate(job *Job) (*core.PodTemplate, error) {
+func (runner *defaultRunner) getPodTemplate(ctx context.Context,
+	job *Job) (*core.PodTemplate, error) {
 	namespace := job.Namespace
 
 	if namespace == "" {
@@ -93,7 +95,7 @@ func (runner *defaultRunner) getPodTemplate(job *Job) (*core.PodTemplate, error)
 	template, err := runner.clentset.
 		CoreV1().
 		PodTemplates(namespace).
-		Get(context.TODO(), job.Template, meta.GetOptions{})
+		Get(ctx, job.Template, meta.GetOptions{})
 
 	if err != nil {
 		return nil, err

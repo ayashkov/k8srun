@@ -14,6 +14,8 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var ctx = context.Background()
+
 func setUp(t *testing.T) *assert.Assertions {
 	t.Cleanup(logger.Reset)
 
@@ -34,9 +36,9 @@ func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
 	}
 
 	pods.EXPECT().
-		Delete(context.TODO(), "delete-me", meta.DeleteOptions{})
+		Delete(ctx, "delete-me", meta.DeleteOptions{})
 
-	assert.Nil(execution.Delete())
+	assert.Nil(execution.Delete(ctx))
 
 	assert.Equal(1, len(logger.Entries))
 	assert.Equal(logrus.InfoLevel, logger.LastEntry().Level)
@@ -52,7 +54,7 @@ func Test_Execution_Delete_DoesNothing_WhenNoPodIsProvided(t *testing.T) {
 		Pods: pods,
 	}
 
-	assert.Nil(execution.Delete())
+	assert.Nil(execution.Delete(ctx))
 
 	assert.Empty(logger.Entries)
 }
@@ -71,10 +73,10 @@ func Test_Execution_Delete_ReturnsError_WhenDeleteFails(t *testing.T) {
 	}
 
 	pods.EXPECT().
-		Delete(context.TODO(), "delete-me", meta.DeleteOptions{}).
+		Delete(ctx, "delete-me", meta.DeleteOptions{}).
 		Return(fmt.Errorf("delete error"))
 
-	assert.Error(execution.Delete(),
+	assert.Error(execution.Delete(ctx),
 		"error deleting pod %q in %q namespace: delete error",
 		"delete-me", "namespace")
 

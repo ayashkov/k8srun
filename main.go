@@ -1,6 +1,12 @@
 package main
 
+//go:generate mockgen --package mock --destination mock/runner.go --source runner/runner.go
+//go:generate mockgen --package mock --destination mock/runner_factory.go --source runner/runner_factory.go
+//go:generate mockgen --package mock --destination mock/pod_interface.go k8s.io/client-go/kubernetes/typed/core/v1 PodInterface
+
 import (
+	"context"
+
 	"github.com/ayashkov/k8srun/runner"
 	"github.com/ayashkov/k8srun/service"
 	"github.com/spf13/cobra"
@@ -38,7 +44,8 @@ execute Kubernetes workload from AutoSys jobs.`,
 			job.Args = args[1:]
 
 			cluster := runnerFactory.New(kubeconfig)
-			exitCode, err := cluster.Run(&job, service.Os.Stdout())
+			exitCode, err := cluster.Run(context.Background(), &job,
+				service.Os.Stdout())
 
 			if err != nil {
 				service.Log.Error(err)

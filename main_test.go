@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/ayashkov/k8srun/mock"
@@ -11,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
+
+var ctx = reflect.TypeOf((*context.Context)(nil)).Elem()
 
 var mockRunnerFactory *mock.MockRunnerFactory
 
@@ -78,14 +82,19 @@ func Test_MainLogsError_WhenNoAutoJobName(t *testing.T) {
 func Test_MainRunsJob_Normally(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
-	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
-	mockRunner.EXPECT().Run(&runner.Job{
-		Instance:  "ACE",
-		Name:      "TEST_JOB",
-		Namespace: "",
-		Template:  "template",
-		Args:      []string{},
-	}, service.Os.Stdout()).Return(0, nil)
+	mockRunnerFactory.EXPECT().
+		New("").
+		Return(mockRunner)
+	mockRunner.EXPECT().
+		Run(gomock.AssignableToTypeOf(ctx),
+			&runner.Job{
+				Instance:  "ACE",
+				Name:      "TEST_JOB",
+				Namespace: "",
+				Template:  "template",
+				Args:      []string{},
+			}, service.Os.Stdout()).
+		Return(0, nil)
 
 	mock.ExitsWith(t, 0, main)
 
@@ -95,8 +104,12 @@ func Test_MainRunsJob_Normally(t *testing.T) {
 func Test_MainUsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "--kubeconfig=k8s.conf")
 
-	mockRunnerFactory.EXPECT().New("k8s.conf").Return(mockRunner)
-	mockRunner.EXPECT().Run(gomock.Any(), gomock.Any()).Return(0, nil)
+	mockRunnerFactory.EXPECT().
+		New("k8s.conf").
+		Return(mockRunner)
+	mockRunner.EXPECT().
+		Run(gomock.AssignableToTypeOf(ctx), gomock.Any(), gomock.Any()).
+		Return(0, nil)
 
 	mock.ExitsWith(t, 0, main)
 
@@ -106,14 +119,19 @@ func Test_MainUsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
 func Test_MainSuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "--namespace=build")
 
-	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
-	mockRunner.EXPECT().Run(&runner.Job{
-		Instance:  "ACE",
-		Name:      "TEST_JOB",
-		Namespace: "build",
-		Template:  "template",
-		Args:      []string{},
-	}, service.Os.Stdout()).Return(0, nil)
+	mockRunnerFactory.EXPECT().
+		New("").
+		Return(mockRunner)
+	mockRunner.EXPECT().
+		Run(gomock.AssignableToTypeOf(ctx),
+			&runner.Job{
+				Instance:  "ACE",
+				Name:      "TEST_JOB",
+				Namespace: "build",
+				Template:  "template",
+				Args:      []string{},
+			}, service.Os.Stdout()).
+		Return(0, nil)
 
 	mock.ExitsWith(t, 0, main)
 
@@ -123,14 +141,19 @@ func Test_MainSuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
 func Test_MainSuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "-n", "dev")
 
-	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
-	mockRunner.EXPECT().Run(&runner.Job{
-		Instance:  "ACE",
-		Name:      "TEST_JOB",
-		Namespace: "dev",
-		Template:  "template",
-		Args:      []string{},
-	}, service.Os.Stdout()).Return(0, nil)
+	mockRunnerFactory.EXPECT().
+		New("").
+		Return(mockRunner)
+	mockRunner.EXPECT().
+		Run(gomock.AssignableToTypeOf(ctx),
+			&runner.Job{
+				Instance:  "ACE",
+				Name:      "TEST_JOB",
+				Namespace: "dev",
+				Template:  "template",
+				Args:      []string{},
+			}, service.Os.Stdout()).
+		Return(0, nil)
 
 	mock.ExitsWith(t, 0, main)
 
@@ -140,14 +163,19 @@ func Test_MainSuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
 func Test_MainSuppliesArgsToContainer_WhenProvided(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "--", "ls", "-la", "/")
 
-	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
-	mockRunner.EXPECT().Run(&runner.Job{
-		Instance:  "ACE",
-		Name:      "TEST_JOB",
-		Namespace: "",
-		Template:  "template",
-		Args:      []string{"ls", "-la", "/"},
-	}, service.Os.Stdout()).Return(0, nil)
+	mockRunnerFactory.EXPECT().
+		New("").
+		Return(mockRunner)
+	mockRunner.EXPECT().
+		Run(gomock.AssignableToTypeOf(ctx),
+			&runner.Job{
+				Instance:  "ACE",
+				Name:      "TEST_JOB",
+				Namespace: "",
+				Template:  "template",
+				Args:      []string{"ls", "-la", "/"},
+			}, service.Os.Stdout()).
+		Return(0, nil)
 
 	mock.ExitsWith(t, 0, main)
 
@@ -157,8 +185,12 @@ func Test_MainSuppliesArgsToContainer_WhenProvided(t *testing.T) {
 func Test_MainUsesContainerExitCode_WhenProvided(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
-	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
-	mockRunner.EXPECT().Run(gomock.Any(), gomock.Any()).Return(42, nil)
+	mockRunnerFactory.EXPECT().
+		New("").
+		Return(mockRunner)
+	mockRunner.EXPECT().
+		Run(gomock.AssignableToTypeOf(ctx), gomock.Any(), gomock.Any()).
+		Return(42, nil)
 
 	mock.ExitsWith(t, 42, main)
 
@@ -168,8 +200,11 @@ func Test_MainUsesContainerExitCode_WhenProvided(t *testing.T) {
 func Test_MainLogsError_WhenRunReportsError(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
-	mockRunnerFactory.EXPECT().New("").Return(mockRunner)
-	mockRunner.EXPECT().Run(gomock.Any(), gomock.Any()).
+	mockRunnerFactory.EXPECT().
+		New("").
+		Return(mockRunner)
+	mockRunner.EXPECT().
+		Run(gomock.AssignableToTypeOf(ctx), gomock.Any(), gomock.Any()).
 		Return(-1, fmt.Errorf("error running"))
 
 	mock.ExitsWith(t, 128, main)

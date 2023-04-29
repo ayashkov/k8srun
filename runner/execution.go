@@ -19,9 +19,9 @@ type Execution struct {
 	Pod  *core.Pod
 }
 
-func (execution *Execution) CopyLogs(dst io.Writer) error {
+func (execution *Execution) CopyLogs(ctx context.Context, dst io.Writer) error {
 	err := wait.PollImmediate(2*time.Second, time.Minute, func() (done bool, err error) {
-		pod, err := execution.Pods.Get(context.TODO(), execution.Pod.Name,
+		pod, err := execution.Pods.Get(ctx, execution.Pod.Name,
 			meta.GetOptions{})
 
 		if err != nil {
@@ -45,7 +45,7 @@ func (execution *Execution) CopyLogs(dst io.Writer) error {
 	}
 
 	log, err := execution.Pods.GetLogs(execution.Pod.Name,
-		&core.PodLogOptions{Follow: true}).Stream(context.TODO())
+		&core.PodLogOptions{Follow: true}).Stream(ctx)
 
 	if err != nil {
 		return err
@@ -58,11 +58,11 @@ func (execution *Execution) CopyLogs(dst io.Writer) error {
 	return err
 }
 
-func (execution *Execution) WaitForCompletion() (int, error) {
+func (execution *Execution) WaitForCompletion(ctx context.Context) (int, error) {
 	var exitCode int
 
 	err := wait.PollImmediate(2*time.Second, time.Minute, func() (done bool, err error) {
-		pod, err := execution.Pods.Get(context.TODO(), execution.Pod.Name,
+		pod, err := execution.Pods.Get(ctx, execution.Pod.Name,
 			meta.GetOptions{})
 
 		if err != nil {
@@ -95,12 +95,12 @@ func (execution *Execution) WaitForCompletion() (int, error) {
 	return exitCode, nil
 }
 
-func (execution *Execution) Delete() error {
+func (execution *Execution) Delete(ctx context.Context) error {
 	if execution.Pod == nil {
 		return nil
 	}
 
-	err := execution.Pods.Delete(context.TODO(), execution.Pod.Name,
+	err := execution.Pods.Delete(ctx, execution.Pod.Name,
 		meta.DeleteOptions{})
 
 	if err != nil {

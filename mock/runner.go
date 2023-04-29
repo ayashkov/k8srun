@@ -5,6 +5,7 @@
 package mock
 
 import (
+	context "context"
 	io "io"
 	reflect "reflect"
 
@@ -36,31 +37,31 @@ func (m *MockRunner) EXPECT() *MockRunnerMockRecorder {
 }
 
 // Run mocks base method.
-func (m *MockRunner) Run(job *runner.Job, out io.Writer) (int, error) {
+func (m *MockRunner) Run(ctx context.Context, job *runner.Job, out io.Writer) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Run", job, out)
+	ret := m.ctrl.Call(m, "Run", ctx, job, out)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Run indicates an expected call of Run.
-func (mr *MockRunnerMockRecorder) Run(job, out interface{}) *gomock.Call {
+func (mr *MockRunnerMockRecorder) Run(ctx, job, out interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockRunner)(nil).Run), job, out)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockRunner)(nil).Run), ctx, job, out)
 }
 
 // Start mocks base method.
-func (m *MockRunner) Start(job *runner.Job) (*runner.Execution, error) {
+func (m *MockRunner) Start(ctx context.Context, job *runner.Job) (*runner.Execution, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", job)
+	ret := m.ctrl.Call(m, "Start", ctx, job)
 	ret0, _ := ret[0].(*runner.Execution)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockRunnerMockRecorder) Start(job interface{}) *gomock.Call {
+func (mr *MockRunnerMockRecorder) Start(ctx, job interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockRunner)(nil).Start), job)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockRunner)(nil).Start), ctx, job)
 }
