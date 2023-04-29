@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/ayashkov/k8srun/mock"
@@ -13,8 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
-
-var ctx = reflect.TypeOf((*context.Context)(nil)).Elem()
 
 var mockRunnerFactory *mock.MockRunnerFactory
 
@@ -86,7 +83,7 @@ func Test_MainRunsJob_Normally(t *testing.T) {
 		New("").
 		Return(mockRunner)
 	mockRunner.EXPECT().
-		Run(gomock.AssignableToTypeOf(ctx),
+		Run(context.Background(),
 			&runner.Job{
 				Instance:  "ACE",
 				Name:      "TEST_JOB",
@@ -108,7 +105,7 @@ func Test_MainUsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
 		New("k8s.conf").
 		Return(mockRunner)
 	mockRunner.EXPECT().
-		Run(gomock.AssignableToTypeOf(ctx), gomock.Any(), gomock.Any()).
+		Run(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(0, nil)
 
 	mock.ExitsWith(t, 0, main)
@@ -123,7 +120,7 @@ func Test_MainSuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
 		New("").
 		Return(mockRunner)
 	mockRunner.EXPECT().
-		Run(gomock.AssignableToTypeOf(ctx),
+		Run(context.Background(),
 			&runner.Job{
 				Instance:  "ACE",
 				Name:      "TEST_JOB",
@@ -145,7 +142,7 @@ func Test_MainSuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
 		New("").
 		Return(mockRunner)
 	mockRunner.EXPECT().
-		Run(gomock.AssignableToTypeOf(ctx),
+		Run(context.Background(),
 			&runner.Job{
 				Instance:  "ACE",
 				Name:      "TEST_JOB",
@@ -167,7 +164,7 @@ func Test_MainSuppliesArgsToContainer_WhenProvided(t *testing.T) {
 		New("").
 		Return(mockRunner)
 	mockRunner.EXPECT().
-		Run(gomock.AssignableToTypeOf(ctx),
+		Run(context.Background(),
 			&runner.Job{
 				Instance:  "ACE",
 				Name:      "TEST_JOB",
@@ -189,7 +186,7 @@ func Test_MainUsesContainerExitCode_WhenProvided(t *testing.T) {
 		New("").
 		Return(mockRunner)
 	mockRunner.EXPECT().
-		Run(gomock.AssignableToTypeOf(ctx), gomock.Any(), gomock.Any()).
+		Run(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(42, nil)
 
 	mock.ExitsWith(t, 42, main)
@@ -204,7 +201,7 @@ func Test_MainLogsError_WhenRunReportsError(t *testing.T) {
 		New("").
 		Return(mockRunner)
 	mockRunner.EXPECT().
-		Run(gomock.AssignableToTypeOf(ctx), gomock.Any(), gomock.Any()).
+		Run(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(-1, fmt.Errorf("error running"))
 
 	mock.ExitsWith(t, 128, main)
