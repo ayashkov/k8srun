@@ -10,12 +10,25 @@ import (
 	"github.com/ayashkov/k8srun/service"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
+
+var logger *test.Hook
+
+var mockOs *mock.MockOsServices
 
 var mockRunnerFactory *mock.MockRunnerFactory
 
 var mockRunner *mock.MockRunner
+
+func TestMain(m *testing.M) {
+	mockOs = mock.NewMockOsServices()
+	service.Os = mockOs
+	service.Log, logger = test.NewNullLogger()
+	service.Log.ExitFunc = mockOs.Exit
+	m.Run()
+}
 
 func setUp(t *testing.T, args ...string) *assert.Assertions {
 	prevRunnerFactory := runnerFactory
@@ -29,19 +42,20 @@ func setUp(t *testing.T, args ...string) *assert.Assertions {
 		mockOs.StdoutBuffer().Reset()
 	})
 
-	ctrl := gomock.NewController(t)
-	mockRunnerFactory = mock.NewMockRunnerFactory(ctrl)
-	mockRunner = mock.NewMockRunner(ctrl)
-	runnerFactory = mockRunnerFactory
-
 	mockOs.Setenv("AUTOSERV", "ACE")
 	mockOs.Setenv("AUTO_JOB_NAME", "TEST_JOB")
 	mockOs.SetArgs(args...)
 
+	ctrl := gomock.NewController(t)
+
+	mockRunner = mock.NewMockRunner(ctrl)
+	mockRunnerFactory = mock.NewMockRunnerFactory(ctrl)
+	runnerFactory = mockRunnerFactory
+
 	return assert.New(t)
 }
 
-func Test_MainShowsUsage_WhenNoArgs(t *testing.T) {
+func Test_Main_ShowsUsage_WhenNoArgs(t *testing.T) {
 	assert := setUp(t, "k8srun")
 
 	mock.ExitsWith(t, 1, main)
@@ -52,7 +66,7 @@ func Test_MainShowsUsage_WhenNoArgs(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainLogsError_WhenNoAutoserv(t *testing.T) {
+func Test_Main_LogsError_WhenNoAutoserv(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
 	mockOs.Setenv("AUTOSERV", "")
@@ -64,7 +78,7 @@ func Test_MainLogsError_WhenNoAutoserv(t *testing.T) {
 	assert.Contains(logger.LastEntry().Message, "AUTOSERV and AUTO_JOB_NAME")
 }
 
-func Test_MainLogsError_WhenNoAutoJobName(t *testing.T) {
+func Test_Main_LogsError_WhenNoAutoJobName(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
 	mockOs.Setenv("AUTO_JOB_NAME", "")
@@ -76,7 +90,7 @@ func Test_MainLogsError_WhenNoAutoJobName(t *testing.T) {
 	assert.Contains(logger.LastEntry().Message, "AUTOSERV and AUTO_JOB_NAME")
 }
 
-func Test_MainRunsJob_Normally(t *testing.T) {
+func Test_Main_RunsJob_Normally(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
 	mockRunnerFactory.EXPECT().
@@ -98,7 +112,7 @@ func Test_MainRunsJob_Normally(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainUsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
+func Test_Main_UsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "--kubeconfig=k8s.conf")
 
 	mockRunnerFactory.EXPECT().
@@ -113,7 +127,7 @@ func Test_MainUsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainSuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
+func Test_Main_SuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "--namespace=build")
 
 	mockRunnerFactory.EXPECT().
@@ -135,7 +149,7 @@ func Test_MainSuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainSuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
+func Test_Main_SuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "-n", "dev")
 
 	mockRunnerFactory.EXPECT().
@@ -157,7 +171,7 @@ func Test_MainSuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainSuppliesArgsToContainer_WhenProvided(t *testing.T) {
+func Test_Main_SuppliesArgsToContainer_WhenProvided(t *testing.T) {
 	assert := setUp(t, "k8srun", "template", "--", "ls", "-la", "/")
 
 	mockRunnerFactory.EXPECT().
@@ -179,7 +193,7 @@ func Test_MainSuppliesArgsToContainer_WhenProvided(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainUsesContainerExitCode_WhenProvided(t *testing.T) {
+func Test_Main_UsesContainerExitCode_WhenProvided(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
 	mockRunnerFactory.EXPECT().
@@ -194,7 +208,7 @@ func Test_MainUsesContainerExitCode_WhenProvided(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
-func Test_MainLogsError_WhenRunReportsError(t *testing.T) {
+func Test_Main_LogsError_WhenRunReportsError(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
 	mockRunnerFactory.EXPECT().
