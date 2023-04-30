@@ -23,7 +23,7 @@ type Runner interface {
 }
 
 type defaultRunner struct {
-	clentset  *kubernetes.Clientset
+	clentset  kubernetes.Interface
 	namespace string
 }
 

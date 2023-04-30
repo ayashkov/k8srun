@@ -14,6 +14,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var logger *test.Hook
@@ -29,6 +32,34 @@ func setUp(t *testing.T) *assert.Assertions {
 	t.Cleanup(logger.Reset)
 
 	return assert.New(t)
+}
+
+func Test_RunnerFactory_New_CreatesRunner_Normally(t *testing.T) {
+	assert := setUp(t)
+	ctrl := gomock.NewController(t)
+	clientConfig := mock.NewMockClientConfig(ctrl)
+	clientSet := mock.NewMockInterface(ctrl)
+	clientConfigCreator := func(loader clientcmd.ClientConfigLoader,
+		overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
+		return clientConfig
+	}
+	clientSetCreator := func(c *rest.Config) (kubernetes.Interface, error) {
+		return clientSet, nil
+	}
+	factory := runner.NewRunnerFactory(clientConfigCreator, clientSetCreator)
+
+	assert.NotNil(factory)
+
+	clientConfig.EXPECT().
+		Namespace().
+		Return("test-namespace", false, nil)
+	clientConfig.EXPECT().
+		ClientConfig().
+		Return(&rest.Config{}, nil)
+
+	runner := factory.New("")
+
+	assert.NotNil(runner)
 }
 
 func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
