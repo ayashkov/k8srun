@@ -5,7 +5,7 @@ import (
 )
 
 type RunnerFactory interface {
-	New(kubeconfig string) Runner
+	New(kubeconfig string) (Runner, error)
 }
 
 type defaultRunnerFactory struct{}
@@ -16,7 +16,7 @@ func NewRunnerFactory() RunnerFactory {
 	return &defaultRunnerFactory{}
 }
 
-func (factory *defaultRunnerFactory) New(kubeconfig string) Runner {
+func (factory *defaultRunnerFactory) New(kubeconfig string) (Runner, error) {
 	rules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 	rules.ExplicitPath = kubeconfig
@@ -44,5 +44,5 @@ func (factory *defaultRunnerFactory) New(kubeconfig string) Runner {
 	return &defaultRunner{
 		clentset:  clientset,
 		namespace: namespace,
-	}
+	}, nil
 }

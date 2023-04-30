@@ -95,7 +95,7 @@ func Test_Main_RunsJob_Normally(t *testing.T) {
 
 	mockRunnerFactory.EXPECT().
 		New("").
-		Return(mockRunner)
+		Return(mockRunner, nil)
 	mockRunner.EXPECT().
 		Run(context.Background(),
 			&runner.Job{
@@ -117,7 +117,7 @@ func Test_Main_UsesKubeconfig_WhenKubeconfigFlag(t *testing.T) {
 
 	mockRunnerFactory.EXPECT().
 		New("k8s.conf").
-		Return(mockRunner)
+		Return(mockRunner, nil)
 	mockRunner.EXPECT().
 		Run(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(0, nil)
@@ -132,7 +132,7 @@ func Test_Main_SuppliesNamespaceToPod_WhenNamespaceFlag(t *testing.T) {
 
 	mockRunnerFactory.EXPECT().
 		New("").
-		Return(mockRunner)
+		Return(mockRunner, nil)
 	mockRunner.EXPECT().
 		Run(context.Background(),
 			&runner.Job{
@@ -154,7 +154,7 @@ func Test_Main_SuppliesNamespaceToPod_WhenNFlag(t *testing.T) {
 
 	mockRunnerFactory.EXPECT().
 		New("").
-		Return(mockRunner)
+		Return(mockRunner, nil)
 	mockRunner.EXPECT().
 		Run(context.Background(),
 			&runner.Job{
@@ -176,7 +176,7 @@ func Test_Main_SuppliesArgsToContainer_WhenProvided(t *testing.T) {
 
 	mockRunnerFactory.EXPECT().
 		New("").
-		Return(mockRunner)
+		Return(mockRunner, nil)
 	mockRunner.EXPECT().
 		Run(context.Background(),
 			&runner.Job{
@@ -198,7 +198,7 @@ func Test_Main_UsesContainerExitCode_WhenProvided(t *testing.T) {
 
 	mockRunnerFactory.EXPECT().
 		New("").
-		Return(mockRunner)
+		Return(mockRunner, nil)
 	mockRunner.EXPECT().
 		Run(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(42, nil)
@@ -208,12 +208,26 @@ func Test_Main_UsesContainerExitCode_WhenProvided(t *testing.T) {
 	assert.Empty(logger.Entries)
 }
 
+func Test_Main_LogsError_WhenErrorCreatingRunner(t *testing.T) {
+	assert := setUp(t, "k8srun", "template")
+
+	mockRunnerFactory.EXPECT().
+		New("").
+		Return(nil, fmt.Errorf("error creating"))
+
+	mock.ExitsWith(t, 128, main)
+
+	assert.Equal(1, len(logger.Entries))
+	assert.Equal(logrus.ErrorLevel, logger.LastEntry().Level)
+	assert.Equal(logger.LastEntry().Message, "error creating")
+}
+
 func Test_Main_LogsError_WhenRunReportsError(t *testing.T) {
 	assert := setUp(t, "k8srun", "template")
 
 	mockRunnerFactory.EXPECT().
 		New("").
-		Return(mockRunner)
+		Return(mockRunner, nil)
 	mockRunner.EXPECT().
 		Run(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(-1, fmt.Errorf("error running"))

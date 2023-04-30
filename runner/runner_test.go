@@ -73,9 +73,10 @@ func Test_RunnerFactory_New_CreatesRunner_Normally(t *testing.T) {
 		NewClientset(restConfig).
 		Return(clientSet, nil)
 
-	runner := factory.New("")
+	runner, err := factory.New("")
 
 	assert.NotNil(runner)
+	assert.Nil(err)
 }
 
 func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {

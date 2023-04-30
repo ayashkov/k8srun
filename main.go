@@ -46,8 +46,14 @@ execute Kubernetes workload from AutoSys jobs.`,
 			job.Template = args[0]
 			job.Args = args[1:]
 
-			cluster := runnerFactory.New(kubeconfig)
-			exitCode, err := cluster.Run(context.Background(), &job,
+			runner, err := runnerFactory.New(kubeconfig)
+
+			if err != nil {
+				service.Log.Error(err)
+				service.Os.Exit(128)
+			}
+
+			exitCode, err := runner.Run(context.Background(), &job,
 				service.Os.Stdout())
 
 			if err != nil {

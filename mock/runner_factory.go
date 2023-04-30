@@ -35,11 +35,12 @@ func (m *MockRunnerFactory) EXPECT() *MockRunnerFactoryMockRecorder {
 }
 
 // New mocks base method.
-func (m *MockRunnerFactory) New(kubeconfig string) runner.Runner {
+func (m *MockRunnerFactory) New(kubeconfig string) (runner.Runner, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "New", kubeconfig)
 	ret0, _ := ret[0].(runner.Runner)
-	return ret0
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // New indicates an expected call of New.
