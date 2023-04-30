@@ -14,12 +14,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var logger *test.Hook
+
+var ctrl *gomock.Controller
+
+var mockClient *mock.MockK8sClient
+
+var clientConfig *mock.MockClientConfig
+
+var clientSet *mock.MockInterface
 
 var ctx = context.Background()
 
@@ -29,33 +36,42 @@ func TestMain(m *testing.M) {
 }
 
 func setUp(t *testing.T) *assert.Assertions {
-	t.Cleanup(logger.Reset)
+	t.Cleanup(func() {
+		runner.Client = nil
+		mockClient = nil
+		clientSet = nil
+		clientConfig = nil
+		ctrl = nil
+		logger.Reset()
+	})
+
+	ctrl = gomock.NewController(t)
+	clientConfig = mock.NewMockClientConfig(ctrl)
+	clientSet = mock.NewMockInterface(ctrl)
+	mockClient = mock.NewMockK8sClient(ctrl)
+
+	runner.Client = mockClient
 
 	return assert.New(t)
 }
 
 func Test_RunnerFactory_New_CreatesRunner_Normally(t *testing.T) {
 	assert := setUp(t)
-	ctrl := gomock.NewController(t)
-	clientConfig := mock.NewMockClientConfig(ctrl)
-	clientSet := mock.NewMockInterface(ctrl)
-	clientConfigCreator := func(loader clientcmd.ClientConfigLoader,
-		overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig {
-		return clientConfig
-	}
-	clientSetCreator := func(c *rest.Config) (kubernetes.Interface, error) {
-		return clientSet, nil
-	}
-	factory := runner.NewRunnerFactory(clientConfigCreator, clientSetCreator)
+	factory := runner.NewRunnerFactory()
+	restConfig := &rest.Config{}
 
-	assert.NotNil(factory)
-
+	mockClient.EXPECT().
+		NewClientConfig(gomock.Any(), &clientcmd.ConfigOverrides{}).
+		Return(clientConfig)
 	clientConfig.EXPECT().
 		Namespace().
 		Return("test-namespace", false, nil)
 	clientConfig.EXPECT().
 		ClientConfig().
-		Return(&rest.Config{}, nil)
+		Return(restConfig, nil)
+	mockClient.EXPECT().
+		NewClientset(restConfig).
+		Return(clientSet, nil)
 
 	runner := factory.New("")
 

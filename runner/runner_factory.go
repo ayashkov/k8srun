@@ -1,8 +1,6 @@
 package runner
 
 import (
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -10,20 +8,12 @@ type RunnerFactory interface {
 	New(kubeconfig string) Runner
 }
 
-type defaultRunnerFactory struct {
-	newClientConfig func(loader clientcmd.ClientConfigLoader,
-		overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig
-	newClientSet func(c *rest.Config) (kubernetes.Interface, error)
-}
+type defaultRunnerFactory struct{}
 
-func NewRunnerFactory(clientConfigCreator func(
-	loader clientcmd.ClientConfigLoader,
-	overrides *clientcmd.ConfigOverrides) clientcmd.ClientConfig,
-	clientSetCreator func(c *rest.Config) (kubernetes.Interface, error)) RunnerFactory {
-	return &defaultRunnerFactory{
-		newClientConfig: clientConfigCreator,
-		newClientSet:    clientSetCreator,
-	}
+var Client K8sClient = defaultK8sClient{}
+
+func NewRunnerFactory() RunnerFactory {
+	return &defaultRunnerFactory{}
 }
 
 func (factory *defaultRunnerFactory) New(kubeconfig string) Runner {
@@ -31,7 +21,7 @@ func (factory *defaultRunnerFactory) New(kubeconfig string) Runner {
 
 	rules.ExplicitPath = kubeconfig
 
-	clientConfig := factory.newClientConfig(rules,
+	clientConfig := Client.NewClientConfig(rules,
 		&clientcmd.ConfigOverrides{})
 	namespace, _, err := clientConfig.Namespace()
 
@@ -45,7 +35,7 @@ func (factory *defaultRunnerFactory) New(kubeconfig string) Runner {
 		panic(err.Error())
 	}
 
-	clientset, err := factory.newClientSet(config)
+	clientset, err := Client.NewClientset(config)
 
 	if err != nil {
 		panic(err.Error())

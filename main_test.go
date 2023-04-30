@@ -33,13 +33,13 @@ func TestMain(m *testing.M) {
 func setUp(t *testing.T, args ...string) *assert.Assertions {
 	prevRunnerFactory := runnerFactory
 
-	t.Cleanup(logger.Reset)
 	t.Cleanup(func() {
 		runnerFactory = prevRunnerFactory
 		mockRunner = nil
 		mockRunnerFactory = nil
 		mockOs.StderrBuffer().Reset()
 		mockOs.StdoutBuffer().Reset()
+		logger.Reset()
 	})
 
 	mockOs.Setenv("AUTOSERV", "ACE")

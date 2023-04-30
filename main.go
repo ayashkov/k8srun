@@ -2,8 +2,9 @@ package main
 
 //go:generate mockgen --package mock --destination mock/runner.go --source runner/runner.go
 //go:generate mockgen --package mock --destination mock/runner_factory.go --source runner/runner_factory.go
+//go:generate mockgen --package mock --destination mock/k8s_client.go --source runner/k8s_client.go
 //go:generate mockgen --package mock --destination mock/client_config.go k8s.io/client-go/tools/clientcmd ClientConfig
-//go:generate mockgen --package mock --destination mock/k8s_interface.go k8s.io/client-go/kubernetes Interface
+//go:generate mockgen --package mock --destination mock/clientset.go k8s.io/client-go/kubernetes Interface
 //go:generate mockgen --package mock --destination mock/pod_interface.go k8s.io/client-go/kubernetes/typed/core/v1 PodInterface
 
 import (
@@ -12,16 +13,9 @@ import (
 	"github.com/ayashkov/k8srun/runner"
 	"github.com/ayashkov/k8srun/service"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
-var runnerFactory = runner.NewRunnerFactory(
-	clientcmd.NewNonInteractiveDeferredLoadingClientConfig,
-	func(c *rest.Config) (kubernetes.Interface, error) {
-		return kubernetes.NewForConfig(c)
-	})
+var runnerFactory = runner.NewRunnerFactory()
 
 func main() {
 	if err := newRunCommand().Execute(); err != nil {
