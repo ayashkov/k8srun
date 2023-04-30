@@ -79,6 +79,24 @@ func Test_RunnerFactory_New_CreatesRunner_Normally(t *testing.T) {
 	assert.Nil(err)
 }
 
+func Test_RunnerFactory_New_PropagaresError_WhenErrorGettingNamespace(t *testing.T) {
+	assert := setUp(t)
+	factory := runner.NewRunnerFactory()
+	namespaceError := fmt.Errorf("error getting namespace")
+
+	mockClient.EXPECT().
+		NewClientConfig(gomock.Any(), &clientcmd.ConfigOverrides{}).
+		Return(clientConfig)
+	clientConfig.EXPECT().
+		Namespace().
+		Return("", false, namespaceError)
+
+	runner, err := factory.New("")
+
+	assert.Nil(runner)
+	assert.Equal(namespaceError, err)
+}
+
 func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
 	assert := setUp(t)
 	pods := mock.NewMockPodInterface(gomock.NewController(t))

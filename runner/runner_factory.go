@@ -26,7 +26,7 @@ func (factory *defaultRunnerFactory) New(kubeconfig string) (Runner, error) {
 	namespace, _, err := clientConfig.Namespace()
 
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
 	config, err := clientConfig.ClientConfig()
