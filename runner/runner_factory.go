@@ -29,16 +29,16 @@ func (factory *defaultRunnerFactory) New(kubeconfig string) (Runner, error) {
 		return nil, err
 	}
 
-	config, err := clientConfig.ClientConfig()
+	restConfig, err := clientConfig.ClientConfig()
 
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
-	clientset, err := Client.NewClientset(config)
+	clientset, err := Client.NewClientset(restConfig)
 
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
 	return &defaultRunner{

@@ -28,6 +28,8 @@ var clientConfig *mock.MockClientConfig
 
 var clientSet *mock.MockInterface
 
+var factory = runner.NewRunnerFactory()
+
 var ctx = context.Background()
 
 func TestMain(m *testing.M) {
@@ -57,7 +59,6 @@ func setUp(t *testing.T) *assert.Assertions {
 
 func Test_RunnerFactory_New_CreatesRunner_Normally(t *testing.T) {
 	assert := setUp(t)
-	factory := runner.NewRunnerFactory()
 	restConfig := &rest.Config{}
 
 	mockClient.EXPECT().
@@ -81,11 +82,10 @@ func Test_RunnerFactory_New_CreatesRunner_Normally(t *testing.T) {
 
 func Test_RunnerFactory_New_PropagaresError_WhenErrorGettingNamespace(t *testing.T) {
 	assert := setUp(t)
-	factory := runner.NewRunnerFactory()
 	namespaceError := fmt.Errorf("error getting namespace")
 
 	mockClient.EXPECT().
-		NewClientConfig(gomock.Any(), &clientcmd.ConfigOverrides{}).
+		NewClientConfig(gomock.Any(), gomock.Any()).
 		Return(clientConfig)
 	clientConfig.EXPECT().
 		Namespace().
@@ -95,6 +95,49 @@ func Test_RunnerFactory_New_PropagaresError_WhenErrorGettingNamespace(t *testing
 
 	assert.Nil(runner)
 	assert.Equal(namespaceError, err)
+}
+
+func Test_RunnerFactory_New_PropagaresError_WhenErrorCreatingRestConfig(t *testing.T) {
+	assert := setUp(t)
+	restError := fmt.Errorf("error creating REST config")
+
+	mockClient.EXPECT().
+		NewClientConfig(gomock.Any(), gomock.Any()).
+		Return(clientConfig)
+	clientConfig.EXPECT().
+		Namespace().
+		Return("test-namespace", false, nil)
+	clientConfig.EXPECT().
+		ClientConfig().
+		Return(nil, restError)
+
+	runner, err := factory.New("")
+
+	assert.Nil(runner)
+	assert.Equal(restError, err)
+}
+
+func Test_RunnerFactory_New_PropagaresError_WhenErrorCreatingClientset(t *testing.T) {
+	assert := setUp(t)
+	clientsetError := fmt.Errorf("error creating Clientset")
+
+	mockClient.EXPECT().
+		NewClientConfig(gomock.Any(), gomock.Any()).
+		Return(clientConfig)
+	clientConfig.EXPECT().
+		Namespace().
+		Return("test-namespace", false, nil)
+	clientConfig.EXPECT().
+		ClientConfig().
+		Return(&rest.Config{}, nil)
+	mockClient.EXPECT().
+		NewClientset(gomock.Any()).
+		Return(nil, clientsetError)
+
+	runner, err := factory.New("")
+
+	assert.Nil(runner)
+	assert.Equal(clientsetError, err)
 }
 
 func Test_Execution_Delete_DeletesPod_WhenPodIsProvided(t *testing.T) {
