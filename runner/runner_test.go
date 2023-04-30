@@ -7,14 +7,23 @@ import (
 
 	"github.com/ayashkov/k8srun/mock"
 	"github.com/ayashkov/k8srun/runner"
+	"github.com/ayashkov/k8srun/service"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var logger *test.Hook
+
 var ctx = context.Background()
+
+func TestMain(m *testing.M) {
+	service.Log, logger = test.NewNullLogger()
+	m.Run()
+}
 
 func setUp(t *testing.T) *assert.Assertions {
 	t.Cleanup(logger.Reset)
